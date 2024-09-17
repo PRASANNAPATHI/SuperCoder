@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Button } from '@nextui-org/react';
-import { createOrUpdateLLMAPIKey, getLLMAPIKeys } from '@/api/DashboardService';
+import { createOrUpdateLLMAPIKey, getLLMAPIKeys, validateOpenAIKey } from '@/api/DashboardService';
 import toast from 'react-hot-toast';
 import CustomInput from '@/components/CustomInput/CustomInput';
 import imagePath from '@/app/imagePath';
@@ -17,10 +17,28 @@ export default function Models() {
     },
   };
 
-  const handleButtonClick = () => {
-    toCreateOrUpdateLLMAPIKey().then().catch();
+  const handleButtonClick = async () => {
+    const isValid = await validateApiKeys(); //checking validation before updating
+    if (isValid) {
+      toCreateOrUpdateLLMAPIKey().then().catch();
+    }
   };
 
+  const validateApiKeys = async (): Promise<boolean> => {
+    let isValid = true;
+    for (const model of modelsList || []) {
+      if (model.model_name === 'gpt-4o' && !await isValidOpenAIKey(model.api_key)) {
+        toast.error('Invalid OpenAI API Key. Please check and try again.');
+        isValid = false;
+      }
+    }
+    return isValid;
+  };
+
+  const isValidOpenAIKey = async (apiKey: string | undefined): Promise<boolean> => {
+    if (!apiKey) return false;
+    return await validateOpenAIKey(apiKey); //function call to validateOpenAIKey(apiKey) in DashboardService.tsx
+  };
   const handleApiKeyChange = (model_name: string, value: string) => {
     setModelsList(
       (prev) =>

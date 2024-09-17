@@ -189,3 +189,52 @@ export const getUserDetails = async (): Promise<UserData> => {
 export const logoutUser = async () => {
   return api.post(`/auth/logout`);
 };
+
+//OpenAI Api key format validation 
+
+const isValidApiKeyFormat = (apiKey: string): boolean => {
+  const apiKeyPattern = /^sk-([A-Za-z0-9]+(-+[A-Za-z0-9]+)*-)?[A-Za-z0-9]{32,}$/;
+  return apiKeyPattern.test(apiKey);
+};
+
+//OpenAI Api key validation through request call to OpenAI
+
+export const validateOpenAIKey = async (apiKey: string): Promise<boolean> => {
+  try {
+    // Step 1: Check if the API key format is valid
+    if (!isValidApiKeyFormat(apiKey)) {
+      console.log('Invalid API key format');
+      return false;
+    }
+
+    // Step 2: API request to OpenAI to check available models
+    const response = await fetch('https://api.openai.com/v1/models', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.status !== 200) {
+      console.log('Invalid API key');
+      return false; // Key is invalid if status is not 200
+    }
+
+    const data = await response.json();
+
+    // Step 3: Check if the gpt-4o model is available
+    const modelList = data.data || [];
+    const hasGPT4oAccess = modelList.some((model: any) => model.id === 'gpt-4o');
+
+    if (!hasGPT4oAccess) {
+      console.log('API key does not have access to the GPT-4o model');
+      return false; // Key does not have access to the required model
+    }
+
+    return true; // Key is valid and has access to GPT-4o
+  } catch (error) {
+    console.error('Error validating the API key:', error);
+    return false;
+  }
+};
